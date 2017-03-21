@@ -1,29 +1,29 @@
 #ifndef OPERATIONS_H
 #define OPERATIONS_H
 
-#define NOP 0
-#define ADD 1
-#define SUB 2
-#define MUL 3
-#define DIV 4
-#define MOVE 7
-#define LDA 8
-#define LD1 9
-#define LD2 10
-#define LD3 11
-#define LD4 12
-#define LD5 13
-#define LD6 14
-#define LDX 15
-#define STA 24
-#define ST1 25
-#define ST2 26
-#define ST3 27
-#define ST4 28
-#define ST5 29
-#define ST6 30
-#define STX 31
-#define STJ 32
-#define STZ 33
+#define NOP     0x00
+#define ADD     0x01
+#define SUB     0x02
+#define MUL     0x03
+#define DIV     0x04
+#define MOVE    0x07
+#define LDA     0x08
+#define LD1     0x09
+#define LD2     0x0a
+#define LD3     0x0b
+#define LD4     0x0c
+#define LD5     0x0d
+#define LD6     0x0e
+#define LDX     0x0f
+#define STA     0x18
+#define ST1     0x19
+#define ST2     0x1a
+#define ST3     0x1b
+#define ST4     0x1c
+#define ST5     0x1d
+#define ST6     0x1e
+#define STX     0x1f
+#define STJ     0x20
+#define STZ     0x21
 
 #endif // OPERATIONS_H

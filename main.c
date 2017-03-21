@@ -4,6 +4,7 @@
 
 #define MAX_MEMORY 4000
 
+#include "operations.h"
 #include "datatypes.h"
 
 struct Memory memoria;
