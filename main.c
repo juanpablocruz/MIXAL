@@ -247,8 +247,7 @@ int main(int argc, char *argv[])
     parseCode(source);
     printMemory();
     printSpecialRegisters();
-   // printIndex(1);
-   // printRegister(&X);
+
     printf("memory size: %d\n", sizeof(memoria));
     return 0;
 }

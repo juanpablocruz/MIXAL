@@ -7,4 +7,5 @@ SOURCES += \
     main.c
 
 HEADERS += \
-    datatypes.h
+    datatypes.h \
+    operations.h
