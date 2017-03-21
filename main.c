@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #define MAX_MEMORY 4000
 
 #include "datatypes.h"
@@ -216,22 +217,34 @@ void printSpecialRegisters() {
     printf("\n");
 }
 
+void parseCode(const char* src) {
+    char *end_str;
+    char *line = strtok_s(src,"\n",&end_str);
+
+    while(line != NULL) {
+        char *end_token;
+        printf("%s\n",line);
+        char *cmd = strtok_s(line, " ",&end_token);
+        char *args = strtok_s(NULL," ",&end_token);
+        process(cmd,args);
+        line = strtok_s(NULL, "\n", &end_str);
+    }
+}
+
+char *source = "LD1 2000(0:2)\n\
+               LD6 2000(0:2)\n\
+               LDX 2000\n\
+               STX 2001\n\
+               LDA 3999\n\
+               ADD 2000\n";
+
 int main(int argc, char *argv[])
 {
-    Register r;
-    Register r2;
-    setRegister(NEGATIVE,"80354",&r);
-    setRegister(POSITIVE,"11111",&r2);
-    printRegister(&r);
-    printRegister(&r2);
-    memoria.data[2000] = r;
-    memoria.data[3999] = r2;
-    process("LD1","2000(0:2)");
-    process("LD6","2000(0:2)");
-    process("LDX","2000");
-    process("STX","2001");
-    process("LDA","3999");
-    process("ADD","2000");
+
+    setRegister(NEGATIVE,"80354",&memoria.data[2000]);
+    setRegister(POSITIVE,"11111",&memoria.data[3999]);
+
+    parseCode(source);
     printMemory();
     printSpecialRegisters();
    // printIndex(1);
