@@ -87,7 +87,7 @@ int run() {
     ptrAddr += J.INDEX;
     memory_register *tmp = &memory;
     int instr = 0;
-    int v;
+    int v,v2;
     while(instr++ < 10) {
         tmp = &memory;
         switch(ptrAddr->COD) {
@@ -117,9 +117,27 @@ int run() {
             break;
         case ADD:
             tmp += ptrAddr->ADDR;
-            int v = (A.DATA * A.Sign) + (tmp->DATA * tmp->Sign);
-            A.Sign = (v > 0)?POSITIVE:NEGATIVE;
-            A.DATA = abs(v);
+            v = getMasked(ptrAddr->mask, tmp->DATA);
+            if(v < 0) {
+                v = abs(v);
+                tmp->Sign = -1;
+            }
+
+            v2 = (A.DATA * A.Sign) + (v * tmp->Sign);
+            A.Sign = (v2 > 0)?POSITIVE:NEGATIVE;
+            A.DATA = abs(v2);
+            break;
+        case SUB:
+            tmp += ptrAddr->ADDR;
+            v = getMasked(ptrAddr->mask, tmp->DATA);
+            if(v < 0) {
+                v = abs(v);
+                tmp->Sign = -1;
+            }
+
+            v2 = (A.DATA * A.Sign) + (v * tmp->Sign * -1);
+            A.Sign = (v2 > 0)?POSITIVE:NEGATIVE;
+            A.DATA = abs(v2);
             break;
         }
         ptrAddr++;
@@ -195,7 +213,12 @@ void compile(char *cmd, char *args) {
        ptrAddr->ADDR = mods.address;
        ptrAddr->mask = mods.mask;
        ptrAddr++;
-    } else if(strcmp(cmd,"ORIG") == 0) {
+    } else if(strcmp(cmd,"SUB") == 0) {
+        ptrAddr->COD = SUB;
+        ptrAddr->ADDR = mods.address;
+        ptrAddr->mask = mods.mask;
+        ptrAddr++;
+     } else if(strcmp(cmd,"ORIG") == 0) {
        J.INDEX = mods.address;
        ptrAddr->mask = mods.mask;
        ptrAddr += J.INDEX;
@@ -266,7 +289,7 @@ char *source = "ORIG 2015\n\
                LDX 1999(2:5)\n\
                STX 2001\n\
                LDA 2000\n\
-               ADD 1999\n\
+               ADD 1999(3:4)\n\
                STA 2002\n\
                LDA 2016\n";
 
@@ -292,10 +315,6 @@ int main(int argc, char *argv[])
 
     run();
 
-    int n = 3456;
-    int mask = 0xfff;
-
-    printf("%u 0x%6x %u %u %x\n", n,mask, n&mask, (int)(n%100)/100, (int)(mask%(16*16))/(16*16));
     printInnerMemory();
     printSpecialRegisters();
 
