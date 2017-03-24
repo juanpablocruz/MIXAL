@@ -21,26 +21,36 @@ struct Memory {
 
 typedef struct{
     int8_t Sign;
+    uint32_t mask;
     union{
         struct{
             uint16_t COD;
-            uint32_t ADDR;
+            uint64_t ADDR;
         };
         struct{
             uint16_t _PAD1;
-            uint32_t DATA;
+            uint64_t DATA;
         };
         struct{
-            uint32_t _PAD2;
+            uint64_t _PAD2;
             uint16_t INDEX;
         };
+        struct{
+            uint8_t byte1;
+            uint8_t byte2;
+            uint8_t byte3;
+            uint8_t byte4;
+            uint8_t byte5;
+            uint8_t _PAD3;
+            uint32_t _PAD4;
+        };
+
     };
 } memory_register;
 
 typedef struct {
-    int from;
-    int to;
-    int address;
+    uint32_t mask;
+    uint64_t address;
 }Modifiers;
 
 #endif // DATATYPES_H

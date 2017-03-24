@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #define MAX_MEMORY 4000
 
@@ -38,15 +39,21 @@ Modifiers getModifiers(char *cmd,char *args) {
     char *address = strtok(args,"(");
     char *delim = "";
     int size = 0;
-    mods.to = 6;
-    mods.from = 0;
+    int to, from;
+    to = 5;
+    from = 0;
     if((delim = strtok(NULL,"("))) {
         delim = strtok(delim,")");
-        mods.from = atoi(strtok(delim, ":"));
-        mods.to = atoi(strtok(NULL,":"));
+        from = atoi(strtok(delim, ":"));
+        to = atoi(strtok(NULL,":"));
     }
     int addr = atoi(address);
     mods.address = addr;
+
+    int FiveBitMask = 0xffffff;
+    int fromMask = (int)(FiveBitMask >> (from * sizeof(int)));
+    int toMask = (int)(FiveBitMask << ((5-to) * sizeof(int))) & FiveBitMask;
+    mods.mask = (fromMask & toMask)& FiveBitMask;
     return mods;
 }
 
@@ -56,22 +63,51 @@ void storeRegister(memory_register *R, int addrs) {
     *ptr = *R;
 }
 
+uint32_t getMasked(uint32_t mask, uint32_t value) {
+    uint32_t result = 0;
+    int hex = mask;
+    int val = value;
+    int decimal = 0;
+    int h, v;
+    for(int i=1; i < 6; i++) {
+        h = hex%16;
+        v = val%10;
+        hex/=16;
+        val/=10;
+        result += (v&h)*(int)pow(10,decimal);
+        decimal++;
+    }
+    if(hex%16) result *= -1;
+    return result;
+}
+
 int run() {
     int result = 0;
     ptrAddr = &memory;
     ptrAddr += J.INDEX;
     memory_register *tmp = &memory;
     int instr = 0;
+    int v;
     while(instr++ < 10) {
         tmp = &memory;
         switch(ptrAddr->COD) {
         case LDA:
             tmp += ptrAddr->ADDR;
-            A.DATA = tmp->DATA;
+            v = getMasked(ptrAddr->mask, tmp->DATA);
+            if(v < 0) {
+                v = abs(v);
+                X.Sign = -1;
+            }
+            A.DATA = v;
             break;
         case LDX:
             tmp += ptrAddr->ADDR;
-            X.DATA = tmp->DATA;
+            v = getMasked(ptrAddr->mask, tmp->DATA);
+            if(v < 0) {
+                v = abs(v);
+                X.Sign = -1;
+            }
+            X.DATA = v;
             break;
         case STA:
             storeRegister(&A, ptrAddr->ADDR);
@@ -98,59 +134,70 @@ void compile(char *cmd, char *args) {
     if(strcmp(cmd,"LDA") == 0) {
         ptrAddr->COD = LDA;
         ptrAddr->ADDR = mods.address;
+        ptrAddr->mask = mods.mask;
         ptrAddr++;
     } else if(strcmp(cmd,"LDX") == 0) {
         ptrAddr->COD = LDX;
         ptrAddr->ADDR = mods.address;
+        ptrAddr->mask = mods.mask;
         ptrAddr++;
     } else if((strlen(cmd) == 3) && cmd[0] == 'L' && cmd[1] == 'D') {
         switch(cmd[2]) {
         case '1':
             ptrAddr->COD = LD1;
             ptrAddr->ADDR = mods.address;
+            ptrAddr->mask = mods.mask;
             ptrAddr++;
             break;
         case '2':
             ptrAddr->COD = LD2;
             ptrAddr->ADDR = mods.address;
+            ptrAddr->mask = mods.mask;
             ptrAddr++;
             break;
         case '3':
             ptrAddr->COD = LD3;
             ptrAddr->ADDR = mods.address;
+            ptrAddr->mask = mods.mask;
             ptrAddr++;
             break;
         case '4':
             ptrAddr->COD = LD4;
             ptrAddr->ADDR = mods.address;
+            ptrAddr->mask = mods.mask;
             ptrAddr++;
             break;
         case '5':
             ptrAddr->COD = LD5;
             ptrAddr->ADDR = mods.address;
+            ptrAddr->mask = mods.mask;
             ptrAddr++;
             break;
         case '6':
             ptrAddr->COD = LD6;
             ptrAddr->ADDR = mods.address;
+            ptrAddr->mask = mods.mask;
             ptrAddr++;
             break;
         }
     } else if(strcmp(cmd,"STA") == 0) {
         ptrAddr->COD = STA;
         ptrAddr->ADDR = mods.address;
+        ptrAddr->mask = mods.mask;
         ptrAddr++;
     } else if(strcmp(cmd,"STX") == 0) {
         ptrAddr->COD = STX;
         ptrAddr->ADDR = mods.address;
+        ptrAddr->mask = mods.mask;
         ptrAddr++;
     } else if(strcmp(cmd,"ADD") == 0) {
        ptrAddr->COD = ADD;
        ptrAddr->ADDR = mods.address;
+       ptrAddr->mask = mods.mask;
        ptrAddr++;
     } else if(strcmp(cmd,"ORIG") == 0) {
-       Modifiers mods = getModifiers(cmd,args);
        J.INDEX = mods.address;
+       ptrAddr->mask = mods.mask;
        ptrAddr += J.INDEX;
     }
 }
@@ -163,7 +210,12 @@ void printInnerMemory() {
     while(it != ptrAddr) {
         value = &memory;
         value += it->ADDR;
-        printf("%u %u:%c%u",((((int)&(*it)) - (int)&memory))/sizeof(memory_register),it->COD,(it->Sign>0)?'+':'-',it->ADDR);
+        printf("%u %u:%c%u (0x%6x)",
+               ((((int)&(*it)) - (int)&memory))/sizeof(memory_register),
+               it->COD,
+               (it->Sign>0)?'+':'-',
+               it->ADDR,
+               it->mask);
         if(&(*it) > value) {
             printf(" %u",value->COD);
         }
@@ -209,9 +261,9 @@ void parseCode(const char* src) {
 }
 
 char *source = "ORIG 2015\n\
-               LD1 2000(0:2)\n\
+               LD1 2000(1:2)\n\
                LD6 2000(0:2)\n\
-               LDX 2000\n\
+               LDX 1999(2:5)\n\
                STX 2001\n\
                LDA 2000\n\
                ADD 1999\n\
@@ -220,7 +272,7 @@ char *source = "ORIG 2015\n\
 
 int main(int argc, char *argv[])
 {
-    memory = malloc( MAX_MEMORY * sizeof(memory_register));
+    memory = calloc( MAX_MEMORY, MAX_MEMORY * sizeof(memory_register));
     ptrAddr = &memory;
     J.DATA = 0;
     A.Sign = POSITIVE;
@@ -239,6 +291,11 @@ int main(int argc, char *argv[])
     parseCode(source);
 
     run();
+
+    int n = 3456;
+    int mask = 0xfff;
+
+    printf("%u 0x%6x %u %u %x\n", n,mask, n&mask, (int)(n%100)/100, (int)(mask%(16*16))/(16*16));
     printInnerMemory();
     printSpecialRegisters();
 
