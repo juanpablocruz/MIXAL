@@ -49,8 +49,14 @@ typedef struct{
 } memory_register;
 
 typedef struct {
+    char *label;
+    uint64_t address;
+}label;
+
+typedef struct {
     uint32_t mask;
     uint64_t address;
+    char *label;
 }Modifiers;
 
 #endif // DATATYPES_H

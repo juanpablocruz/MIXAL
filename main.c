@@ -146,9 +146,11 @@ int run() {
     return result;
 }
 
-void compile(char *cmd, char *args) {
+void compile(char *cmd, char *args, label l) {
     Modifiers mods = getModifiers(cmd,args);
-
+    if(strcmp(l.label,"") != 0) {
+        l.address = &ptrAddr;
+    }
     if(strcmp(cmd,"LDA") == 0) {
         ptrAddr->COD = LDA;
         ptrAddr->ADDR = mods.address;
@@ -275,23 +277,39 @@ void parseCode(const char* src) {
     char *line = strtok_s(src,"\n",&end_str);
 
     while(line != NULL) {
+        int total_args = 0;
+        char *corig = line;
+        while((*corig++)) {if(*corig==' ') total_args++;}
         char *end_token;
-        char *cmd = strtok_s(line, " ",&end_token);
+        char *cmd;
+        char *labels;
+        label l;
+        l.label = "";
+        if(total_args > 1) {
+            labels = strtok_s(line, " ",&end_token);
+            cmd = strtok_s(NULL, " ",&end_token);
+            l.label = labels;
+            printf("%s ",labels);
+        } else {
+            cmd = strtok_s(line, " ",&end_token);
+        }
+
         char *args = strtok_s(NULL," ",&end_token);
-        compile(cmd,args);
+        printf("%s %s\n",cmd,args);
+        compile(cmd,args, l);
         line = strtok_s(NULL, "\n", &end_str);
     }
 }
 
 char *source = "ORIG 2015\n\
-               LD1 2000(1:2)\n\
-               LD6 2000(0:2)\n\
-               LDX 1999(2:5)\n\
-               STX 2001\n\
-               LDA 2000\n\
-               ADD 1999(3:4)\n\
-               STA 2002\n\
-               LDA 2016\n";
+LD1 2000(1:2)\n\
+LD6 2000(0:2)\n\
+LDX 1999(2:5)\n\
+STORE STX 2001\n\
+LDA 2000\n\
+ADD 1999(3:4)\n\
+STA 2002\n\
+LDA 2016\n";
 
 int main(int argc, char *argv[])
 {
