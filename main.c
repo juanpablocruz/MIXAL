@@ -17,6 +17,8 @@ memory_register J;
 char *CMD;
 char *line;
 memory_register *ptrAddr;
+label_vector computedLabels;
+
 
 memory_register* getRegisterFromAddress(int addr) {
     memory_register* R;
@@ -31,6 +33,18 @@ void setRegister(memory_register *r, uint32_t value) {
     ptr += r->ADDR;
     ptr->DATA = value;
     ptr->Sign = r->Sign;
+}
+
+void push_label(label l) {
+    if(computedLabels.used == computedLabels.size) {
+        computedLabels.size*=2;
+        label* newBuf = realloc(computedLabels.buffer, computedLabels.size);
+        if(!newBuf) {
+            abort();
+        }
+        computedLabels.buffer = newBuf;
+    }
+    computedLabels.buffer[computedLabels.used++] = l;
 }
 
 
@@ -150,6 +164,7 @@ void compile(char *cmd, char *args, label l) {
     Modifiers mods = getModifiers(cmd,args);
     if(strcmp(l.label,"") != 0) {
         l.address = &ptrAddr;
+        push_label(l);
     }
     if(strcmp(cmd,"LDA") == 0) {
         ptrAddr->COD = LDA;
@@ -301,6 +316,17 @@ void parseCode(const char* src) {
     }
 }
 
+void printLabels() {
+    if(computedLabels.used > 0) {
+        printf("\nLabels: \n");
+        for(int i = 0; i < computedLabels.used; i++) {
+            printf("%s 0x%x\n", computedLabels.buffer[i].label, computedLabels.buffer[i].address);
+        }
+        printf("\n");
+    }
+
+}
+
 char *source = "ORIG 2015\n\
 LD1 2000(1:2)\n\
 LD6 2000(0:2)\n\
@@ -314,6 +340,9 @@ LDA 2016\n";
 int main(int argc, char *argv[])
 {
     memory = calloc( MAX_MEMORY, MAX_MEMORY * sizeof(memory_register));
+    computedLabels.size = 2;
+    computedLabels.used = 0;
+    computedLabels.buffer = (label*)malloc(sizeof(label*) * computedLabels.size);
     ptrAddr = &memory;
     J.DATA = 0;
     A.Sign = POSITIVE;
@@ -335,6 +364,7 @@ int main(int argc, char *argv[])
 
     printInnerMemory();
     printSpecialRegisters();
+        printLabels();
 
     return 0;
 }

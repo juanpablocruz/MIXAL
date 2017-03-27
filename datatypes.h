@@ -54,6 +54,12 @@ typedef struct {
 }label;
 
 typedef struct {
+    size_t size;
+    size_t used;
+    label *buffer;
+}label_vector;
+
+typedef struct {
     uint32_t mask;
     uint64_t address;
     char *label;
