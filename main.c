@@ -61,8 +61,25 @@ Modifiers getModifiers(char *cmd,char *args) {
         from = atoi(strtok(delim, ":"));
         to = atoi(strtok(NULL,":"));
     }
-    int addr = atoi(address);
-    mods.address = addr;
+    int digit = 1;
+    for(int i = 0; i < strlen(address); i++) {
+        if(!isdigit(address[i])){
+            digit = 0;
+            break;
+        }
+    }
+    if(digit) {
+        int addr = atoi(address);
+        mods.address = addr;
+    } else {
+        for(int i = 0; i < computedLabels.used; i++) {
+            if(strcmp(address,computedLabels.buffer[i].label) == 0) {
+                int addr = computedLabels.buffer[i].address;
+                mods.address = ((((int)addr) - (int)&memory))/sizeof(memory_register);
+                break;
+            }
+        }
+    }
 
     int FiveBitMask = 0xffffff;
     int fromMask = (int)(FiveBitMask >> (from * sizeof(int)));
@@ -98,12 +115,15 @@ uint32_t getMasked(uint32_t mask, uint32_t value) {
 int run() {
     int result = 0;
     ptrAddr = &memory;
-    ptrAddr += J.INDEX;
+    ptrAddr += ptrAddr->ADDR;
     memory_register *tmp = &memory;
     int instr = 0;
+    int incrementedJ;
     int v,v2;
     while(instr++ < 10) {
+        incrementedJ = 0;
         tmp = &memory;
+        printf("%d %d\n", ptrAddr->COD, J.INDEX);
         switch(ptrAddr->COD) {
         case LDA:
             tmp += ptrAddr->ADDR;
@@ -128,6 +148,11 @@ int run() {
             break;
         case STX:
             storeRegister(&X, ptrAddr->ADDR);
+            break;
+        case STJ:
+            int addr =(ptrAddr->ADDR*sizeof(memory_register)) + (int)&memory;
+            printf("J: 0x%x\n",addr);
+            J.INDEX = ptrAddr->ADDR;
             break;
         case ADD:
             tmp += ptrAddr->ADDR;
@@ -157,13 +182,17 @@ int run() {
         ptrAddr++;
     }
 
+    if(!incrementedJ) {
+        //J.ADDR = &ptrAddr;
+    }
+
     return result;
 }
 
 void compile(char *cmd, char *args, label l) {
     Modifiers mods = getModifiers(cmd,args);
     if(strcmp(l.label,"") != 0) {
-        l.address = &ptrAddr;
+        l.address = &(*ptrAddr);
         push_label(l);
     }
     if(strcmp(cmd,"LDA") == 0) {
@@ -225,6 +254,12 @@ void compile(char *cmd, char *args, label l) {
         ptrAddr->ADDR = mods.address;
         ptrAddr->mask = mods.mask;
         ptrAddr++;
+    } else if(strcmp(cmd,"STJ") == 0) {
+        ptrAddr->COD = STJ;
+        ptrAddr->ADDR = mods.address;
+        ptrAddr->mask = mods.mask;
+        ptrAddr->Sign = POSITIVE;
+        ptrAddr++;
     } else if(strcmp(cmd,"ADD") == 0) {
        ptrAddr->COD = ADD;
        ptrAddr->ADDR = mods.address;
@@ -237,6 +272,7 @@ void compile(char *cmd, char *args, label l) {
         ptrAddr++;
      } else if(strcmp(cmd,"ORIG") == 0) {
        J.INDEX = mods.address;
+       ptrAddr->ADDR = mods.address;
        ptrAddr->mask = mods.mask;
        ptrAddr += J.INDEX;
     }
@@ -250,7 +286,8 @@ void printInnerMemory() {
     while(it != ptrAddr) {
         value = &memory;
         value += it->ADDR;
-        printf("%u %u:%c%u (0x%6x)",
+        printf("0x%x %u %u:%c%u (0x%6x)",
+               &(*it),
                ((((int)&(*it)) - (int)&memory))/sizeof(memory_register),
                it->COD,
                (it->Sign>0)?'+':'-',
@@ -282,7 +319,6 @@ void printSpecialRegisters() {
     printf("\n");
 
     printf("Index J: ");
-    printf("0X%x: ",&J);
     printf("%u",J.INDEX);
     printf("\n");
 }
@@ -320,7 +356,10 @@ void printLabels() {
     if(computedLabels.used > 0) {
         printf("\nLabels: \n");
         for(int i = 0; i < computedLabels.used; i++) {
-            printf("%s 0x%x\n", computedLabels.buffer[i].label, computedLabels.buffer[i].address);
+            printf("%s 0x%x %u\n",
+                   computedLabels.buffer[i].label,
+                   computedLabels.buffer[i].address,
+                   ((((int)computedLabels.buffer[i].address) - (int)&memory))/sizeof(memory_register));
         }
         printf("\n");
     }
@@ -335,7 +374,8 @@ STORE STX 2001\n\
 LDA 2000\n\
 ADD 1999(3:4)\n\
 STA 2002\n\
-LDA 2016\n";
+LDA 2016\n\
+STJ STORE\n";
 
 int main(int argc, char *argv[])
 {
@@ -362,7 +402,7 @@ int main(int argc, char *argv[])
 
     run();
 
-    printInnerMemory();
+    //printInnerMemory();
     printSpecialRegisters();
         printLabels();
 
